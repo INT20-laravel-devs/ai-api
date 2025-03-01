@@ -1,10 +1,15 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {BadRequestException, Injectable} from '@nestjs/common';
 import OpenAI from 'openai';
-import { FiceAdvisorService } from '../ficeadvisor/ficeadvisor.service';
+import {FiceAdvisorService} from "../ficeadvisor/ficeadvisor.service";
+import {PrismaService} from "../../database/prisma.service";
 
 @Injectable()
 export class OpenAiService {
-  constructor(private readonly ficeAdvisorService: FiceAdvisorService) {}
+  constructor(
+    private readonly ficeAdvisorService:FiceAdvisorService,
+    private readonly prismaService: PrismaService,
+  ) {
+  }
   private readonly openAi = new OpenAI({
     apiKey: process.env.OPEN_AI_API_KEY ?? '',
   });
@@ -19,21 +24,28 @@ export class OpenAiService {
     return this.openAi.beta.threads.create({});
   }
 
-  async addMessageToThread(threadId: string, message: string) {
-    await this.openAi.beta.threads.messages.create(threadId, {
-      role: 'user',
-      content: message,
-    });
-    return this.createRun(threadId);
+  async addMessageToThread(threadId: string, message: string, userId: string) {
+    await this.openAi.beta.threads.messages.create(threadId,
+      { role: 'user', content: message })
+    return this.createRun(threadId, userId);
   }
 
-  async createRun(threadId: string) {
-    let run = await this.openAi.beta.threads.runs.create(threadId, {
-      assistant_id: this.assistantId,
-    });
+  async createRun(threadId: string, userId: string) {
+    let run = await this.openAi.beta.threads.runs.create(
+      threadId,
+      { assistant_id: this.assistantId }
+    );
+    const payload = await this.prismaService.userIntegrations.findFirst({
+      where: {
+        userId,
+      }
+    })
+    if (!payload) {
+      throw new BadRequestException('Incorrect user');
+    }
 
     while (true) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       run = await this.openAi.beta.threads.runs.retrieve(run.thread_id, run.id);
       console.log(`🔄 Поточний статус: ${run.status}`);
@@ -48,44 +60,32 @@ export class OpenAiService {
       if (run.status === 'requires_action' && run.required_action) {
         const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
 
-        const toolResponses = await Promise.all(
-          toolCalls.map(async (toolCall) => {
-            const method = toolCall.function.name;
-            const param = JSON.parse(toolCall.function.arguments);
+        const toolResponses = await Promise.all(toolCalls.map(async (toolCall) => {
+          const method = toolCall.function.name;
+          const param = JSON.parse(toolCall.function.arguments);
 
-            try {
-              const result = await this.ficeAdvisorService[method](param);
-              return {
-                tool_call_id: toolCall.id,
-                output: JSON.stringify(result),
-              };
-            } catch (error) {
-              console.error(`❌ Помилка виконання функції ${method}:`, error);
-              return {
-                tool_call_id: toolCall.id,
-                output: JSON.stringify({
-                  error: 'Помилка під час виконання функції',
-                }),
-              };
-            }
-          }),
-        );
+          try {
+            const result = await this.ficeAdvisorService[method](param, JSON.parse(payload.payload as any).token);
+            return {
+              tool_call_id: toolCall.id,
+              output: JSON.stringify(result),
+            };
+          } catch (error) {
+            console.error(`❌ Помилка виконання функції ${method}:`, error);
+            return {
+              tool_call_id: toolCall.id,
+              output: JSON.stringify({ error: "Помилка під час виконання функції" }),
+            };
+          }
+        }));
 
-        await this.openAi.beta.threads.runs.submitToolOutputs(
-          run.thread_id,
-          run.id,
-          {
-            tool_outputs: toolResponses,
-          },
-        );
+        await this.openAi.beta.threads.runs.submitToolOutputs(run.thread_id, run.id, {
+          tool_outputs: toolResponses,
+        });
       }
     }
 
-    const messages = (await this.openAi.beta.threads.messages.list(
-      run.thread_id,
-    )) as any;
-    return (
-      messages.data[0]?.content[0].text.value || 'Немає відповіді від OpenAI.'
-    );
+    const messages = await this.openAi.beta.threads.messages.list(run.thread_id) as any;
+    return messages.data[0]?.content[0].text.value || "Немає відповіді від OpenAI.";
   }
 }

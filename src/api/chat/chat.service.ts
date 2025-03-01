@@ -33,11 +33,12 @@ export class ChatService {
     });
   }
 
-  async createMessage(threadId: string, content: string) {
+  async createMessage(threadId: string, content: string, userId: string) {
     await this.baseCreateMessage(threadId, content);
     const response = await this.openAiService.addMessageToThread(
       threadId,
       content,
+      userId,
     );
     await this.baseCreateMessage(threadId, response);
     return { content: response };
