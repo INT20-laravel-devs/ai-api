@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import {OpenAiService} from "../open-ai/open-ai.service";
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService,
+              private readonly openAiService: OpenAiService) {}
 
   async getChatHistory(threadId: string) {
     return this.prisma.conversation.findFirst({
@@ -31,18 +33,17 @@ export class ChatService {
 
   async createMessage(threadId: string, content: string) {
     await this.baseCreateMessage(threadId, content);
-
-    const answer = ''; // call open ai, pass threadId, content
-    await this.baseCreateMessage(threadId, answer);
-    return { content: answer }; // answer from chat gpt
+    const response = await this.openAiService.addMessageToThread(threadId, content);
+    await this.baseCreateMessage(threadId, response);
+    return { content: response };
   }
 
   async createChat(name: string, userId: string) {
-    // const threadId = // call open ai, pass name
+    const thread = await this.openAiService.createThread()
     return this.prisma.conversation.create({
       data: {
         name,
-        threadId: 'threadId', // change line
+        threadId: thread.id,
         userId,
       },
     });

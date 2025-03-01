@@ -33,8 +33,8 @@ export class ChatGateway {
   }
 
   @SubscribeMessage('message')
-  handleMessage(@MessageBody() data: { threadId: string; content: string }) {
-    const answer = this.chatService.createMessage(data.threadId, data.content);
+  async handleMessage(@MessageBody() data: { threadId: string; content: string }) {
+    const answer = await this.chatService.createMessage(data.threadId, data.content);
     this.server.to(data.threadId).emit('message', answer);
   }
 

@@ -18,8 +18,22 @@ export class FiceAdvisorService {
     );
   }
 
-  async getTeacherById(pathParams: { id: string }): Promise<string> {
+  async getTeacher(pathParams: { id: string }): Promise<string> {
     const url = `${this.ficeAdvisorUrl}/teachers/${pathParams.id}`;
+    return fetch(url, { method: 'GET', headers: this.header }).then(
+      (response) => response.json(),
+    );
+  }
+
+  async getTeacherComments(params: { teacherId: string, subjectId?: string, year?: number, semester?: number, sortBy?: string, page?: number, pageSize?: number }): Promise<string> {
+    const { teacherId, ...queryParams } = params;
+    let url = `${this.ficeAdvisorUrl}/teachers/${teacherId}/comments`;
+
+    const queryString = new URLSearchParams(queryParams as any).toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+
     return fetch(url, { method: 'GET', headers: this.header }).then(
       (response) => response.json(),
     );

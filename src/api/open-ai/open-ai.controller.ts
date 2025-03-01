@@ -7,28 +7,15 @@ import { ApiTags } from '@nestjs/swagger';
 export class OpenAiController {
   constructor(private readonly openAiService: OpenAiService) {}
 
-  @Post('request')
-  async sendRequest(@Body() body: { message: string }) {
-    return this.openAiService.sendRequest(body.message);
-  }
-
   @Get('assistants')
   findAllAssistants() {
     return this.openAiService.getAllAssistants();
   }
 
-  @Post('message')
-  sendMessage() {
-    return this.openAiService.create();
-  }
-
   @Post('run')
-  async run() {
-    return this.openAiService.createRun();
-  }
-
-  @Get('run')
-  async getRun() {
-    return this.openAiService.getRun();
+  async run(
+    @Body()body:  {content: string}
+  ) {
+    return this.openAiService.createRun(body.content)
   }
 }
