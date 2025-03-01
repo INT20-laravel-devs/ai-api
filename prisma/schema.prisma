@@ -16,7 +16,6 @@ model Integration {
   id          String             @id @default(uuid())
   name        String
   description String?
-  type        String
   users       UserIntegrations[]
 
   @@map("integrations")

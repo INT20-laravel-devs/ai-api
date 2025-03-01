@@ -82,4 +82,12 @@ export class UserService {
     if (user.avatarLink) this.fileService.deleteFile(user.avatarLink);
     return user;
   }
+
+  async getUserChats(userId: string) {
+    return this.prisma.conversation.findMany({
+      where: {
+        userId,
+      },
+    });
+  }
 }

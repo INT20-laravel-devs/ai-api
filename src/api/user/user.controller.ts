@@ -47,4 +47,9 @@ export class UserController {
   delete(@Param('id') id: string) {
     return this.userService.deleteById(id);
   }
+
+  @Get('/:id/chats')
+  getUserChats(@Param('id') id: string) {
+    return this.userService.getUserChats(id);
+  }
 }

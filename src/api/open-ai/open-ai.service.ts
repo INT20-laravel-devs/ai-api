@@ -1,13 +1,10 @@
-import {BadRequestException, Injectable} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
-import {FiceAdvisorService} from "../ficeadvisor/ficeadvisor.service";
+import { FiceAdvisorService } from '../ficeadvisor/ficeadvisor.service';
 
 @Injectable()
 export class OpenAiService {
-  constructor(
-    private readonly ficeAdvisorService:FiceAdvisorService
-  ) {
-  }
+  constructor(private readonly ficeAdvisorService: FiceAdvisorService) {}
   private readonly openAi = new OpenAI({
     apiKey: process.env.OPEN_AI_API_KEY ?? '',
   });
@@ -23,19 +20,20 @@ export class OpenAiService {
   }
 
   async addMessageToThread(threadId: string, message: string) {
-    await this.openAi.beta.threads.messages.create(threadId,
-      { role: 'user', content: message })
+    await this.openAi.beta.threads.messages.create(threadId, {
+      role: 'user',
+      content: message,
+    });
     return this.createRun(threadId);
   }
 
   async createRun(threadId: string) {
-    let run = await this.openAi.beta.threads.runs.create(
-      threadId,
-      { assistant_id: this.assistantId }
-    );
+    let run = await this.openAi.beta.threads.runs.create(threadId, {
+      assistant_id: this.assistantId,
+    });
 
     while (true) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       run = await this.openAi.beta.threads.runs.retrieve(run.thread_id, run.id);
       console.log(`🔄 Поточний статус: ${run.status}`);
@@ -50,32 +48,44 @@ export class OpenAiService {
       if (run.status === 'requires_action' && run.required_action) {
         const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
 
-        const toolResponses = await Promise.all(toolCalls.map(async (toolCall) => {
-          const method = toolCall.function.name;
-          const param = JSON.parse(toolCall.function.arguments);
+        const toolResponses = await Promise.all(
+          toolCalls.map(async (toolCall) => {
+            const method = toolCall.function.name;
+            const param = JSON.parse(toolCall.function.arguments);
 
-          try {
-            const result = await this.ficeAdvisorService[method](param);
-            return {
-              tool_call_id: toolCall.id,
-              output: JSON.stringify(result),
-            };
-          } catch (error) {
-            console.error(`❌ Помилка виконання функції ${method}:`, error);
-            return {
-              tool_call_id: toolCall.id,
-              output: JSON.stringify({ error: "Помилка під час виконання функції" }),
-            };
-          }
-        }));
+            try {
+              const result = await this.ficeAdvisorService[method](param);
+              return {
+                tool_call_id: toolCall.id,
+                output: JSON.stringify(result),
+              };
+            } catch (error) {
+              console.error(`❌ Помилка виконання функції ${method}:`, error);
+              return {
+                tool_call_id: toolCall.id,
+                output: JSON.stringify({
+                  error: 'Помилка під час виконання функції',
+                }),
+              };
+            }
+          }),
+        );
 
-        await this.openAi.beta.threads.runs.submitToolOutputs(run.thread_id, run.id, {
-          tool_outputs: toolResponses,
-        });
+        await this.openAi.beta.threads.runs.submitToolOutputs(
+          run.thread_id,
+          run.id,
+          {
+            tool_outputs: toolResponses,
+          },
+        );
       }
     }
 
-    const messages = await this.openAi.beta.threads.messages.list(run.thread_id) as any;
-    return messages.data[0]?.content[0].text.value || "Немає відповіді від OpenAI.";
+    const messages = (await this.openAi.beta.threads.messages.list(
+      run.thread_id,
+    )) as any;
+    return (
+      messages.data[0]?.content[0].text.value || 'Немає відповіді від OpenAI.'
+    );
   }
 }
