@@ -12,13 +12,59 @@ enum Role {
   ADMIN
 }
 
+model Integration {
+  id          String             @id @default(uuid())
+  name        String
+  description String?
+  type        String
+  users       UserIntegrations[]
+
+  @@map("integrations")
+}
+
+model UserIntegrations {
+  id            String      @id @default(uuid())
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String
+  integration   Integration @relation(fields: [integrationId], references: [id])
+  integrationId String
+  payload       Json?
+
+  @@map("user_integrations")
+}
+
 model User {
-  id         String  @id @default(uuid())
-  email      String  @unique
-  username   String  @unique
-  password   String
-  role       Role    @default(USER)
-  avatarLink String? @map("avatar_link")
+  id            String             @id @default(uuid())
+  email         String             @unique
+  username      String             @unique
+  password      String
+  role          Role               @default(USER)
+  avatarLink    String?            @map("avatar_link")
+  conversations Conversation[]
+  integrations  UserIntegrations[]
 
   @@map("users")
+}
+
+model Conversation {
+  threadId    String    @unique
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  name        String
+  description String?
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("conversations")
+}
+
+model Message {
+  id           String       @id @default(uuid())
+  content      String
+  conversation Conversation @relation(fields: [threadId], references: [threadId])
+  threadId     String
+  createdAt    DateTime     @default(now())
+
+  @@map("messages")
 }

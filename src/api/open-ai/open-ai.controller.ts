@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { OpenAiService } from './open-ai.service';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Open AI')
 @Controller('open-ai')
 export class OpenAiController {
   constructor(private readonly openAiService: OpenAiService) {}

@@ -6,48 +6,43 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { MessageDto } from './dto/message.dto';
+import { ChatService } from './chat.service';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ChatGateway {
+  constructor(private readonly chatService: ChatService) {}
+
   @WebSocketServer()
   private server: Server;
-
-  private chatHistory = new Map<string, MessageDto[]>();
 
   @SubscribeMessage('join')
   async joinRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: { questId: string },
+    @MessageBody() body: { threadId: string },
   ) {
-    if (!client.rooms.has(body.questId)) {
-      client.rooms.add(body.questId);
+    if (!client.rooms.has(body.threadId)) {
+      client.rooms.add(body.threadId);
     }
-    await client.join(body.questId);
-    const history = this.chatHistory.get(body.questId);
+    await client.join(body.threadId);
+    const history = await this.chatService.getChatHistory(body.threadId);
     if (history) {
       client.emit('join', history);
     } else {
-      this.chatHistory.set(body.questId, []);
       client.emit('join', []);
     }
   }
 
   @SubscribeMessage('message')
-  handleMessage(@MessageBody() data: MessageDto) {
-    this.server.to(data.questId).emit('message', data);
-    const history = this.chatHistory.get(data.questId);
-    history.push(data);
+  handleMessage(@MessageBody() data: { threadId: string; content: string }) {
+    const answer = this.chatService.createMessage(data.threadId, data.content);
+    this.server.to(data.threadId).emit('message', answer);
   }
 
   @SubscribeMessage('leave')
   leaveRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: { questId: string },
+    @MessageBody() body: { threadId: string },
   ) {
-    client.rooms.delete(body.questId);
-    if (this.server.sockets.adapter.rooms.get(body.questId)?.size === 0) {
-      this.chatHistory.delete(body.questId);
-    }
+    client.rooms.delete(body.threadId);
   }
 }

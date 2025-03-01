@@ -4,10 +4,11 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.enableCors();
 
   const config = new DocumentBuilder()
-    .setTitle('<TITLE> API')
-    .setDescription('REST API for <TITLE> web application')
+    .setTitle('AI API')
+    .setDescription('REST API for AI web application')
     .setVersion('1.0')
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
