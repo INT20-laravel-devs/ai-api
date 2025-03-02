@@ -11,6 +11,6 @@ export class OpenAiController {
   async run(
     @Body() body: {content: string, userId: string},
   ) {
-    return this.openAiService.addMessageToThread('thread_KKmOHHqurfvk4rlA5IeENoZy', body.content, body.userId)
+    return this.openAiService.addMessageToThread('thread_4T5Ghh9UBpxSaiTuDKzixysi', body.content, body.userId)
   }
 }

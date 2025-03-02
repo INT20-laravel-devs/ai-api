@@ -152,4 +152,45 @@ export class FiceAdvisorService {
       (response) => response.json(),
     );
   }
+
+  async getGroupEvents({
+                   groupId,
+                   addLecture,
+                   addLaboratory,
+                   addPractice,
+                   showOwnSelective,
+                   addOtherEvents,
+                   week
+                 }: {
+    groupId: string;
+    addLecture?: boolean;
+    addLaboratory?: boolean;
+    addPractice?: boolean;
+    showOwnSelective?: boolean;
+    addOtherEvents?: boolean;
+    week?: number;
+  }, token: string): Promise<string> {
+    console.log({
+      groupId,
+      addLecture,
+      addLaboratory,
+      addPractice,
+      showOwnSelective,
+      addOtherEvents,
+      week
+    })
+    const headers = { ...this.header, 'Authorization': `Bearer ${token}` };
+    const url = new URL(`${this.ficeAdvisorUrl}/schedule/groups/${groupId}/events`);
+
+    if (addLecture !== undefined) url.searchParams.append("addLecture", addLecture.toString());
+    if (addLaboratory !== undefined) url.searchParams.append("addLaboratory", addLaboratory.toString());
+    if (addPractice !== undefined) url.searchParams.append("addPractice", addPractice.toString());
+    if (showOwnSelective !== undefined) url.searchParams.append("showOwnSelective", showOwnSelective.toString());
+    if (addOtherEvents !== undefined) url.searchParams.append("addOtherEvents", addOtherEvents.toString());
+    if (week !== undefined) url.searchParams.append("week", week.toString());
+
+    const response = await fetch(url.toString(), { method: "GET", headers });
+    return response.json();
+
+  }
 }

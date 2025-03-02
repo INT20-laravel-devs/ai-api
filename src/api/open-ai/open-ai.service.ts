@@ -52,6 +52,7 @@ export class OpenAiService {
 
       if (run.status === 'completed' || run.status === 'failed') {
         if (run.status === 'failed') {
+          console.dir(run, { depth: null });
           throw new BadRequestException('Помилка під час виконання run.');
         }
         break;
